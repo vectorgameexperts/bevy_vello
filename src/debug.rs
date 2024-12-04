@@ -1,7 +1,7 @@
 //! Logic for rendering debug visualizations
 use crate::{
     text::VelloTextAnchor, CoordinateSpace, VelloAsset, VelloAssetAnchor, VelloFont,
-    VelloTextSection,
+    VelloTextSection, VelloView,
 };
 use bevy::{color::palettes::css, math::Vec3Swizzles, prelude::*};
 
@@ -36,7 +36,10 @@ fn render_asset_debug(
         Without<Node>,
     >,
     assets: Res<Assets<VelloAsset>>,
-    query_cam: Query<(&Camera, &GlobalTransform, &OrthographicProjection), With<Camera2d>>,
+    query_cam: Query<
+        (&Camera, &GlobalTransform, &OrthographicProjection),
+        (With<Camera2d>, With<VelloView>),
+    >,
     mut gizmos: Gizmos,
 ) {
     let Ok((camera, view, projection)) = query_cam.get_single() else {
@@ -95,7 +98,10 @@ fn render_text_debug(
         ),
         Without<Node>,
     >,
-    query_cam: Query<(&Camera, &GlobalTransform, &OrthographicProjection), With<Camera2d>>,
+    query_cam: Query<
+        (&Camera, &GlobalTransform, &OrthographicProjection),
+        (With<Camera2d>, With<VelloView>),
+    >,
     fonts: Res<Assets<VelloFont>>,
     mut gizmos: Gizmos,
 ) {

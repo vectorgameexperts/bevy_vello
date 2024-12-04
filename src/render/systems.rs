@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     render::extract::ExtractedRenderScene, CoordinateSpace, VelloAsset, VelloFont, VelloScene,
-    VelloTextSection,
+    VelloTextSection, VelloView,
 };
 use bevy::{
     prelude::*,
@@ -60,7 +60,7 @@ pub fn setup_image(images: &mut Assets<Image>, window: &WindowResolution) -> Han
 #[allow(clippy::complexity)]
 pub fn render_frame(
     ss_render_target: Query<&SSRenderTarget>,
-    views: Query<(&ExtractedCamera, Option<&RenderLayers>), With<Camera2d>>,
+    views: Query<(&ExtractedCamera, Option<&RenderLayers>), (With<Camera2d>, With<VelloView>)>,
     view_assets: Query<(&PreparedAffine, &ExtractedRenderAsset)>,
     view_scenes: Query<(&PreparedAffine, &ExtractedRenderScene)>,
     view_text: Query<(&PreparedAffine, &ExtractedRenderText)>,

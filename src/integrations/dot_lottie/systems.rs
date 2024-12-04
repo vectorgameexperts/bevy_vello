@@ -1,7 +1,7 @@
 use super::DotLottiePlayer;
 use crate::{
     integrations::lottie::PlaybackPlayMode, PlaybackDirection, PlaybackLoopBehavior,
-    PlaybackOptions, PlayerTransition, Playhead, VectorFile, VelloAsset,
+    PlaybackOptions, PlayerTransition, Playhead, VectorFile, VelloAsset, VelloView,
 };
 use bevy::{prelude::*, utils::Instant};
 use std::time::Duration;
@@ -143,7 +143,7 @@ pub fn run_transitions(
     )>,
     mut assets: ResMut<Assets<VelloAsset>>,
     windows: Query<&Window>,
-    query_view: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
+    query_view: Query<(&Camera, &GlobalTransform), (With<Camera2d>, With<VelloView>)>,
     buttons: Res<ButtonInput<MouseButton>>,
     mut hovered: Local<bool>,
 ) {

@@ -12,7 +12,7 @@ fn main() {
 }
 
 fn setup_ui(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn((Camera2dBundle::default(), VelloView));
 
     let one_third = Val::Percent(100.0 / 3.0);
     commands.spawn((
