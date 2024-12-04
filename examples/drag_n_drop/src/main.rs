@@ -18,7 +18,7 @@ fn main() {
 }
 
 fn setup_vector_graphics(mut commands: Commands, asset_server: ResMut<AssetServer>) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn((Camera2dBundle::default(), VelloView));
     commands.spawn(VelloAssetBundle {
         asset: asset_server.load::<VelloAsset>("embedded://drag_n_drop/assets/fountain.svg"),
         debug_visualizations: DebugVisualizations::Visible,

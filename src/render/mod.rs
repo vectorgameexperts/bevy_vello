@@ -3,6 +3,7 @@
 use bevy::{
     prelude::*,
     render::{
+        extract_component::ExtractComponent,
         mesh::MeshVertexBufferLayoutRef,
         render_resource::{
             AsBindGroup, RenderPipelineDescriptor, ShaderRef, SpecializedMeshPipelineError,
@@ -25,6 +26,10 @@ pub(crate) use plugin::VelloRenderPlugin;
 
 /// A handle to the screen space render target shader.
 pub const SSRT_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(2314894693238056781);
+
+/// A component that should be added to the camera that will render Vello assets.
+#[derive(Component, Debug, Clone, Copy, ExtractComponent)]
+pub struct VelloView;
 
 /// A canvas material, with a shader that samples a texture with view-independent UV coordinates.
 #[derive(AsBindGroup, TypePath, Asset, Clone)]

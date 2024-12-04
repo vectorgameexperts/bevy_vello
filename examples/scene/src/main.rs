@@ -11,7 +11,7 @@ fn main() {
 }
 
 fn setup_vector_graphics(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn((Camera2dBundle::default(), VelloView));
     commands.spawn(VelloSceneBundle::default());
 }
 

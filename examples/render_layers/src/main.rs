@@ -35,6 +35,7 @@ fn setup_gizmos(mut commands: Commands, mut config_store: ResMut<GizmoConfigStor
             ..default()
         },
         RenderLayers::layer(3),
+        VelloView,
     ));
     let (config, _) = config_store.config_mut::<DefaultGizmoConfigGroup>();
     config.render_layers = RenderLayers::layer(3);
@@ -51,6 +52,7 @@ fn setup_scene(mut commands: Commands) {
             ..default()
         },
         RenderLayers::layer(1).with(2),
+        VelloView,
     ));
 
     commands.spawn((
