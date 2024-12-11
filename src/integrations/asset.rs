@@ -1,6 +1,9 @@
 use crate::VectorFile;
 use bevy::{prelude::*, reflect::TypePath};
 
+#[derive(Component, Default, Debug, Clone, Deref, DerefMut, PartialEq, Eq)]
+pub struct VelloAssetHandle(pub Handle<VelloAsset>);
+
 #[derive(Asset, TypePath, Clone)]
 pub struct VelloAsset {
     pub file: VectorFile,
@@ -36,7 +39,8 @@ impl VelloAsset {
         let Rect { min, max } = self.bb_in_world_space(gtransform);
         camera
             .viewport_to_world_2d(camera_transform, min)
-            .zip(camera.viewport_to_world_2d(camera_transform, max))
+            .ok()
+            .zip(camera.viewport_to_world_2d(camera_transform, max).ok())
             .map(|(min, max)| Rect { min, max })
     }
 }

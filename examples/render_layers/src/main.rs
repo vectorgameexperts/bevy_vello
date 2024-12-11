@@ -26,12 +26,10 @@ struct BackgroundScene;
 fn setup_gizmos(mut commands: Commands, mut config_store: ResMut<GizmoConfigStore>) {
     // This camera can only see Gizmos.
     commands.spawn((
-        Camera2dBundle {
-            camera: Camera {
-                // This camera will render LAST.
-                order: 1,
-                ..default()
-            },
+        Camera2d,
+        Camera {
+            // This camera will render LAST.
+            order: 1,
             ..default()
         },
         RenderLayers::layer(3),
@@ -42,12 +40,10 @@ fn setup_gizmos(mut commands: Commands, mut config_store: ResMut<GizmoConfigStor
 
 fn setup_scene(mut commands: Commands) {
     commands.spawn((
-        Camera2dBundle {
-            camera: Camera {
-                // This camera will render first.
-                order: -1,
-                ..default()
-            },
+        Camera2d,
+        Camera {
+            // This camera will render first.
+            order: -1,
             ..default()
         },
         RenderLayers::layer(1).with(2),
@@ -69,7 +65,7 @@ fn animation(
     mut query_scene: Query<(&mut Transform, &mut VelloScene), With<AnimationScene>>,
     time: Res<Time>,
 ) {
-    let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
+    let sin_time = time.elapsed_secs().sin().mul_add(0.5, 0.5);
     let (mut transform, mut scene) = query_scene.single_mut();
     // Reset scene every frame
     *scene = VelloScene::default();
@@ -85,7 +81,7 @@ fn animation(
     scene.fill(
         peniko::Fill::NonZero,
         kurbo::Affine::default(),
-        peniko::Color::rgb(c.x as f64, c.y as f64, c.z as f64),
+        peniko::Color::new([c.x, c.y, c.z, 1.]),
         None,
         &kurbo::RoundedRect::new(-50.0, -50.0, 50.0, 50.0, (sin_time as f64) * 50.0),
     );
@@ -101,7 +97,7 @@ fn background(mut query_scene: Query<&mut VelloScene, With<BackgroundScene>>) {
     scene.fill(
         peniko::Fill::NonZero,
         kurbo::Affine::default(),
-        peniko::Color::rgb(0.0, 0.0, 1.0),
+        peniko::Color::new([0.0, 0.0, 1.0, 1.0]),
         None,
         &kurbo::RoundedRect::new(-200.0, -200.0, 200.0, 200.0, 0.0),
     );

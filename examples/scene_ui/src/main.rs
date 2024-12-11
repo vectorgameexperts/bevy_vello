@@ -12,30 +12,27 @@ fn main() {
 }
 
 fn setup_ui(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 
     let one_third = Val::Percent(100.0 / 3.0);
     commands.spawn((
-        NodeBundle {
-            style: Style {
-                position_type: PositionType::Absolute,
-                left: one_third,
-                top: one_third,
-                width: one_third,
-                height: one_third,
-                border: UiRect::all(Val::Px(2.0)),
-                ..default()
-            },
-            border_color: css::FUCHSIA.with_alpha(0.5).into(),
+        Node {
+            position_type: PositionType::Absolute,
+            left: one_third,
+            top: one_third,
+            width: one_third,
+            height: one_third,
+            border: UiRect::all(Val::Px(2.0)),
             ..default()
         },
+        BorderColor(css::FUCHSIA.with_alpha(0.5).into()),
         Interaction::default(),
         VelloScene::default(),
         CoordinateSpace::ScreenSpace,
     ));
 }
 
-fn update_ui(mut query: Query<(&Node, &Interaction, &mut VelloScene)>) {
+fn update_ui(mut query: Query<(&ComputedNode, &Interaction, &mut VelloScene)>) {
     let Ok((node, interaction, mut scene)) = query.get_single_mut() else {
         return;
     };
@@ -52,8 +49,8 @@ fn update_ui(mut query: Query<(&Node, &Interaction, &mut VelloScene)>) {
     match *interaction {
         Interaction::Hovered | Interaction::Pressed => {
             let color = match *interaction {
-                Interaction::Hovered => peniko::Color::GREEN,
-                Interaction::Pressed => peniko::Color::rgba8(0, 110, 0, 255),
+                Interaction::Hovered => peniko::Color::from_rgba8(0, 255, 0, 255),
+                Interaction::Pressed => peniko::Color::from_rgba8(0, 110, 0, 255),
                 _ => unreachable!(),
             };
 
@@ -88,7 +85,7 @@ fn update_ui(mut query: Query<(&Node, &Interaction, &mut VelloScene)>) {
             scene.fill(
                 peniko::Fill::NonZero,
                 kurbo::Affine::default(),
-                peniko::Color::RED,
+                peniko::Color::from_rgba8(255, 0, 0, 255),
                 None,
                 &kurbo::Circle::new(center, radius),
             );

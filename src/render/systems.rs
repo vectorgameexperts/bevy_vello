@@ -1,11 +1,12 @@
 use super::{
     extract::{ExtractedRenderAsset, ExtractedRenderText, SSRenderTarget},
     prepare::PreparedAffine,
-    VelloCanvasMaterial, VelloCanvasSettings, VelloRenderSettings, VelloRenderer,
+    VelloCanvasMaterial, VelloCanvasMaterialHandle, VelloCanvasSettings, VelloRenderSettings,
+    VelloRenderer,
 };
 use crate::{
-    render::extract::ExtractedRenderScene, CoordinateSpace, VelloAsset, VelloFont, VelloScene,
-    VelloTextSection,
+    render::extract::ExtractedRenderScene, CoordinateSpace, VelloAssetHandle, VelloFont,
+    VelloScene, VelloTextSection,
 };
 use bevy::{
     prelude::*,
@@ -21,7 +22,7 @@ use bevy::{
         texture::GpuImage,
         view::{NoFrustumCulling, RenderLayers},
     },
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+    sprite::MeshMaterial2d,
     window::{WindowResized, WindowResolution},
 };
 use vello::{kurbo::Affine, RenderParams, Scene};
@@ -244,7 +245,7 @@ pub fn render_frame(
 
 pub fn resize_rendertargets(
     mut window_resize_events: EventReader<WindowResized>,
-    mut query: Query<(&mut SSRenderTarget, &Handle<VelloCanvasMaterial>)>,
+    mut query: Query<(&mut SSRenderTarget, &VelloCanvasMaterialHandle)>,
     mut images: ResMut<Assets<Image>>,
     mut target_materials: ResMut<Assets<VelloCanvasMaterial>>,
     windows: Query<&Window>,
@@ -263,7 +264,7 @@ pub fn resize_rendertargets(
         }
         for (mut target, target_mat_handle) in query.iter_mut() {
             let image = setup_image(&mut images, &window.resolution);
-            if let Some(mat) = target_materials.get_mut(target_mat_handle) {
+            if let Some(mat) = target_materials.get_mut(target_mat_handle.id()) {
                 target.0 = image.clone();
                 mat.texture = image;
             }
@@ -314,20 +315,16 @@ pub fn setup_ss_rendertarget(
         meshes.add(rendertarget_quad)
     });
     let texture_image = setup_image(&mut images, &window.resolution);
-    let render_target = SSRenderTarget(texture_image.clone());
-    let mesh = Mesh2dHandle(mesh_handle.clone());
-    let material = custom_materials.add(VelloCanvasMaterial {
-        texture: texture_image,
-    });
 
     commands
-        .spawn(MaterialMesh2dBundle {
-            mesh,
-            material,
-            ..default()
-        })
+        .spawn((
+            SSRenderTarget(texture_image.clone()),
+            Mesh2d(mesh_handle.clone()),
+            MeshMaterial2d(custom_materials.add(VelloCanvasMaterial {
+                texture: texture_image,
+            })),
+        ))
         .insert(NoFrustumCulling)
-        .insert(render_target)
         .insert(settings.render_layers.clone());
 }
 
@@ -351,7 +348,7 @@ pub fn hide_when_empty(
         (),
         Or<(
             With<VelloScene>,
-            With<Handle<VelloAsset>>,
+            With<VelloAssetHandle>,
             With<VelloTextSection>,
         )>,
     >,

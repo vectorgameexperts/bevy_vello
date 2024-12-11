@@ -1,11 +1,10 @@
 use super::PlayerTransition;
-use crate::{PlaybackOptions, Theme, VelloAsset};
-use bevy::prelude::*;
+use crate::{PlaybackOptions, Theme, VelloAssetHandle};
 
 #[derive(Debug, Clone)]
 pub struct PlayerState {
     pub id: &'static str,
-    pub asset: Option<Handle<VelloAsset>>,
+    pub asset: Option<VelloAssetHandle>,
     pub theme: Option<Theme>,
     pub options: Option<PlaybackOptions>,
     pub transitions: Vec<PlayerTransition>,
@@ -28,7 +27,7 @@ impl PlayerState {
         }
     }
 
-    pub fn asset(mut self, asset: Handle<VelloAsset>) -> Self {
+    pub fn asset(mut self, asset: VelloAssetHandle) -> Self {
         self.asset.replace(asset);
         self
     }
@@ -58,7 +57,7 @@ impl PlayerState {
         self
     }
 
-    pub fn set_asset(mut self, asset: Option<Handle<VelloAsset>>) -> Self {
+    pub fn set_asset(mut self, asset: Option<VelloAssetHandle>) -> Self {
         self.asset = asset;
         self
     }
@@ -88,7 +87,7 @@ impl PlayerState {
         self
     }
 
-    pub fn get_asset(&self) -> Option<&Handle<VelloAsset>> {
+    pub fn get_asset(&self) -> Option<&VelloAssetHandle> {
         self.asset.as_ref()
     }
 

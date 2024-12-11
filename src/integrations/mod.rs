@@ -18,7 +18,7 @@ mod error;
 pub use error::VectorLoaderError;
 
 mod asset;
-pub use asset::{VelloAsset, VelloAssetAnchor};
+pub use asset::{VelloAsset, VelloAssetAnchor, VelloAssetHandle};
 
 #[derive(Clone)]
 pub enum VectorFile {

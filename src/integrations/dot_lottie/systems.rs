@@ -1,7 +1,7 @@
 use super::DotLottiePlayer;
 use crate::{
     integrations::lottie::PlaybackPlayMode, PlaybackDirection, PlaybackLoopBehavior,
-    PlaybackOptions, PlayerTransition, Playhead, VectorFile, VelloAsset,
+    PlaybackOptions, PlayerTransition, Playhead, VectorFile, VelloAsset, VelloAssetHandle,
 };
 use bevy::{prelude::*, utils::Instant};
 use std::time::Duration;
@@ -10,7 +10,7 @@ use vello_svg::usvg::strict_num::Ulps;
 /// Advance all the dotLottie playheads in the scene
 pub fn advance_dot_lottie_playheads(
     mut query: Query<(
-        &Handle<VelloAsset>,
+        &VelloAssetHandle,
         &mut Playhead,
         &mut DotLottiePlayer,
         &PlaybackOptions,
@@ -70,7 +70,7 @@ pub fn advance_dot_lottie_playheads(
 
         // Advance playhead
         let length = end_frame - start_frame;
-        playhead.frame += (time.delta_seconds_f64()
+        playhead.frame += (time.delta_secs_f64()
             * options.speed
             * composition.frame_rate
             * (options.direction as i32 as f64)
@@ -139,7 +139,7 @@ pub fn run_transitions(
         &Playhead,
         &PlaybackOptions,
         &GlobalTransform,
-        &mut Handle<VelloAsset>,
+        &mut VelloAssetHandle,
     )>,
     mut assets: ResMut<Assets<VelloAsset>>,
     windows: Query<&Window>,
@@ -156,7 +156,7 @@ pub fn run_transitions(
 
     let pointer_pos = window
         .cursor_position()
-        .and_then(|cursor| camera.viewport_to_world(view, cursor))
+        .and_then(|cursor| camera.viewport_to_world(view, cursor).ok())
         .map(|ray| ray.origin.truncate());
 
     for (mut player, playhead, options, gtransform, current_asset_handle) in query_player.iter_mut()
@@ -312,7 +312,7 @@ pub fn transition_state(
                 let Some(VelloAsset {
                     file: VectorFile::Lottie(composition),
                     ..
-                }) = assets.get(target_asset)
+                }) = assets.get(target_asset.id())
                 else {
                     warn!("not ready for state transition, re-queueing {next_state}...");
                     player.next_state = Some(next_state);

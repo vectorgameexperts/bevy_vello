@@ -26,6 +26,9 @@ pub(crate) use plugin::VelloRenderPlugin;
 /// A handle to the screen space render target shader.
 pub const SSRT_SHADER_HANDLE: Handle<Shader> = Handle::weak_from_u128(2314894693238056781);
 
+#[derive(Component, Default, Debug, Clone, Deref, DerefMut, PartialEq, Eq)]
+pub struct VelloCanvasMaterialHandle(Handle<VelloCanvasMaterial>);
+
 /// A canvas material, with a shader that samples a texture with view-independent UV coordinates.
 #[derive(AsBindGroup, TypePath, Asset, Clone)]
 pub struct VelloCanvasMaterial {

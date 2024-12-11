@@ -1,7 +1,7 @@
 //! Logic for rendering debug visualizations
 use crate::{
-    text::VelloTextAnchor, CoordinateSpace, VelloAsset, VelloAssetAnchor, VelloFont,
-    VelloTextSection,
+    text::VelloTextAnchor, CoordinateSpace, VelloAsset, VelloAssetAnchor, VelloAssetHandle,
+    VelloFont, VelloTextSection,
 };
 use bevy::{color::palettes::css, math::Vec3Swizzles, prelude::*};
 
@@ -27,7 +27,7 @@ pub enum DebugVisualizations {
 fn render_asset_debug(
     query_vectors: Query<
         (
-            &Handle<VelloAsset>,
+            &VelloAssetHandle,
             &VelloAssetAnchor,
             &GlobalTransform,
             &CoordinateSpace,
@@ -48,7 +48,7 @@ fn render_asset_debug(
         .iter()
         .filter(|(_, _, _, _, d)| **d == DebugVisualizations::Visible)
     {
-        if let Some(asset) = assets.get(asset) {
+        if let Some(asset) = assets.get(asset.id()) {
             match space {
                 CoordinateSpace::WorldSpace => {
                     // Origin
@@ -63,14 +63,14 @@ fn render_asset_debug(
                 CoordinateSpace::ScreenSpace => {
                     // Origin
                     let origin = gtransform.translation().xy();
-                    let Some(origin) = camera.viewport_to_world_2d(view, origin) else {
+                    let Ok(origin) = camera.viewport_to_world_2d(view, origin) else {
                         continue;
                     };
                     draw_origin(&mut gizmos, projection, origin);
                     // Bounding box
                     let gtransform = &asset_anchor.compute(asset, gtransform);
                     let rect_center = gtransform.translation().xy();
-                    let Some(rect_center) = camera.viewport_to_world_2d(view, rect_center) else {
+                    let Ok(rect_center) = camera.viewport_to_world_2d(view, rect_center) else {
                         continue;
                     };
                     let Some(rect) = asset.bb_in_screen_space(gtransform, camera, view) else {
@@ -148,13 +148,17 @@ fn render_text_debug(
                         }
                     };
                     let rect_center = origin + rect.size() / 2.0;
-                    gizmos.rect_2d(rect_center, 0.0, rect.size(), css::WHITE);
+                    gizmos.rect_2d(
+                        Isometry2d::new(rect_center, Rot2::degrees(0.0)),
+                        rect.size(),
+                        css::WHITE,
+                    );
                 }
                 CoordinateSpace::ScreenSpace => {
                     let Some(rect) = text.bb_in_screen_space(font, gtransform, camera, view) else {
                         continue;
                     };
-                    let Some(mut origin) =
+                    let Ok(mut origin) =
                         camera.viewport_to_world_2d(view, gtransform.translation().xy())
                     else {
                         continue;
@@ -195,8 +199,7 @@ fn render_text_debug(
                     };
                     let rect_center = origin + Vec2::new(rect.width() / 2.0, -rect.height() / 2.0);
                     gizmos.rect_2d(
-                        rect_center,
-                        0.0,
+                        Isometry2d::new(rect_center, Rot2::degrees(0.0)),
                         rect.size() * Vec2::new(1.0, 1.0),
                         css::WHITE,
                     );
@@ -221,5 +224,9 @@ fn draw_origin(gizmos: &mut Gizmos, projection: &OrthographicProjection, origin:
 
 /// A helper method to draw the bounding box
 fn draw_bounding_box(gizmos: &mut Gizmos, position: Vec2, size: Vec2) {
-    gizmos.rect_2d(position, 0.0, size, css::WHITE);
+    gizmos.rect_2d(
+        Isometry2d::new(position, Rot2::degrees(0.0)),
+        size,
+        css::WHITE,
+    );
 }

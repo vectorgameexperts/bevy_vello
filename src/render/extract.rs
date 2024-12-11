@@ -11,7 +11,7 @@ pub struct ExtractedRenderAsset {
     pub asset_anchor: VelloAssetAnchor,
     pub transform: GlobalTransform,
     pub render_mode: CoordinateSpace,
-    pub ui_node: Option<Node>,
+    pub ui_node: Option<ComputedNode>,
     pub render_layers: Option<RenderLayers>,
     pub alpha: f32,
     #[cfg(feature = "lottie")]
@@ -26,11 +26,11 @@ pub fn extract_svg_assets(
     query_vectors: Extract<
         Query<
             (
-                &Handle<VelloAsset>,
+                &VelloAssetHandle,
                 &VelloAssetAnchor,
                 &CoordinateSpace,
                 &GlobalTransform,
-                Option<&Node>,
+                Option<&ComputedNode>,
                 Option<&RenderLayers>,
                 &ViewVisibility,
                 &InheritedVisibility,
@@ -57,7 +57,7 @@ pub fn extract_svg_assets(
                 alpha,
                 ..
             },
-        ) = assets.get(asset)
+        ) = assets.get(asset.id())
         {
             if view_visibility.get() && inherited_visibility.get() {
                 commands.spawn(ExtractedRenderAsset {
@@ -84,13 +84,13 @@ pub fn extract_lottie_assets(
     query_vectors: Extract<
         Query<
             (
-                &Handle<VelloAsset>,
+                &VelloAssetHandle,
                 &VelloAssetAnchor,
                 &CoordinateSpace,
                 &GlobalTransform,
                 &crate::Playhead,
                 Option<&crate::Theme>,
-                Option<&Node>,
+                Option<&ComputedNode>,
                 Option<&RenderLayers>,
                 &ViewVisibility,
                 &InheritedVisibility,
@@ -119,7 +119,7 @@ pub fn extract_lottie_assets(
                 alpha,
                 ..
             },
-        ) = assets.get(asset)
+        ) = assets.get(asset.id())
         {
             if view_visibility.get() && inherited_visibility.get() {
                 let playhead = playhead.frame();
@@ -144,7 +144,7 @@ pub struct ExtractedRenderScene {
     pub scene: VelloScene,
     pub transform: GlobalTransform,
     pub render_mode: CoordinateSpace,
-    pub ui_node: Option<Node>,
+    pub ui_node: Option<ComputedNode>,
     pub render_layers: Option<RenderLayers>,
 }
 
@@ -158,7 +158,7 @@ pub fn extract_scenes(
                 &GlobalTransform,
                 &ViewVisibility,
                 &InheritedVisibility,
-                Option<&Node>,
+                Option<&ComputedNode>,
                 Option<&RenderLayers>,
             ),
             Without<SkipEncoding>,

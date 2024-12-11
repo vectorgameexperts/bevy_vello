@@ -4,7 +4,7 @@ use super::{
 };
 use crate::{
     render::{VelloCanvasMaterial, VelloRenderer, SSRT_SHADER_HANDLE},
-    VelloAsset, VelloFont, VelloScene, VelloTextSection,
+    VelloAssetHandle, VelloFont, VelloScene, VelloTextSection,
 };
 use bevy::{
     asset::load_internal_asset,
@@ -95,7 +95,7 @@ impl Plugin for VelloRenderPlugin {
                 check_visibility::<
                     Or<(
                         With<VelloScene>,
-                        With<Handle<VelloAsset>>,
+                        With<VelloAssetHandle>,
                         With<VelloTextSection>,
                     )>,
                 >
