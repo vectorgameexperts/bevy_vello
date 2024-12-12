@@ -2,7 +2,7 @@ use crate::{
     debug::DebugVisualizationsPlugin,
     render::{VelloCanvasSettings, VelloRenderPlugin},
     text::VelloFontLoader,
-    VelloAsset, VelloFont, VelloRenderSettings,
+    VelloFont, VelloRenderSettings,
 };
 use bevy::{asset::load_internal_binary_asset, prelude::*, render::view::RenderLayers};
 use vello::AaConfig;
@@ -43,7 +43,6 @@ impl Plugin for VelloPlugin {
             },
         })
         .add_plugins(DebugVisualizationsPlugin)
-        .init_asset::<VelloAsset>()
         .init_asset::<VelloFont>()
         .init_asset_loader::<VelloFontLoader>();
         #[cfg(feature = "svg")]

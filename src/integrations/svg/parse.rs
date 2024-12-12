@@ -1,10 +1,11 @@
-use crate::{integrations::VectorLoaderError, VectorFile, VelloAsset};
+use super::asset::VelloSvg;
+use crate::integrations::VectorLoaderError;
 use bevy::transform::components::Transform;
 use std::sync::Arc;
 use vello_svg::usvg::{self};
 
 /// Deserialize an SVG file from bytes.
-pub fn load_svg_from_bytes(bytes: &[u8]) -> Result<VelloAsset, VectorLoaderError> {
+pub fn load_svg_from_bytes(bytes: &[u8]) -> Result<VelloSvg, VectorLoaderError> {
     let svg_str = std::str::from_utf8(bytes)?;
 
     // Parse SVG
@@ -17,8 +18,8 @@ pub fn load_svg_from_bytes(bytes: &[u8]) -> Result<VelloAsset, VectorLoaderError
     let width = tree.size().width();
     let height = tree.size().height();
 
-    let asset = VelloAsset {
-        file: VectorFile::Svg(Arc::new(scene)),
+    let asset = VelloSvg {
+        scene: Arc::new(scene),
         local_transform_center: {
             let mut transform = Transform::default();
             transform.translation.x = width / 2.0;
@@ -34,7 +35,7 @@ pub fn load_svg_from_bytes(bytes: &[u8]) -> Result<VelloAsset, VectorLoaderError
 }
 
 /// Deserialize an SVG file from a string slice.
-pub fn load_svg_from_str(svg_str: &str) -> Result<VelloAsset, VectorLoaderError> {
+pub fn load_svg_from_str(svg_str: &str) -> Result<VelloSvg, VectorLoaderError> {
     let bytes = svg_str.as_bytes();
 
     load_svg_from_bytes(bytes)

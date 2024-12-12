@@ -20,7 +20,7 @@ fn main() {
 }
 
 fn setup_camera(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d);
 }
 
 fn setup_worldspace_text(mut commands: Commands, asset_server: ResMut<AssetServer>) {
@@ -58,7 +58,7 @@ fn setup_screenspace_text(mut commands: Commands) {
             value: "Screen-space text rendered by Vello!".to_string(),
             style: VelloTextStyle {
                 font_size: 24.0,
-                brush: peniko::Brush::Solid(peniko::Color::RED),
+                brush: peniko::Brush::Solid(peniko::Color::from_rgba8(255, 0, 0, 155)),
                 ..default()
             },
         },
@@ -70,20 +70,17 @@ fn setup_screenspace_text(mut commands: Commands) {
     });
 
     // Bevy text
-    commands.spawn(
-        TextBundle::from_section(
-            "Screen-space text rendered by Bevy!",
-            TextStyle {
-                font_size: 24.0,
-                ..default()
-            },
-        )
-        .with_style(Style {
+    commands
+        .spawn(Node {
             position_type: PositionType::Absolute,
             top: Val::Px(100.0),
             left: Val::Px(100.0),
             ..default()
         })
-        .with_text_justify(JustifyText::Left),
-    );
+        .insert(Text::new("Screen-space text rendered by Bevy!"))
+        .insert(TextFont {
+            font_size: 24.,
+            ..default()
+        })
+        .insert(TextLayout::new_with_justify(justifytext::Left));
 }

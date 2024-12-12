@@ -97,24 +97,21 @@ fn setup(
     });
     // Main pass cube, with material containing the rendered first pass texture.
     commands.spawn((
-        PbrBundle {
-            mesh: meshes.add(Cuboid::new(4.0, 4.0, 4.0)),
-            material: material_handle,
-            transform: Transform::from_xyz(0.0, 0.0, 1.5)
-                .with_rotation(Quat::from_rotation_x(-std::f32::consts::PI / 5.0)),
-            ..default()
-        },
+        Mesh3d(meshes.add(Cuboid::new(4.0, 4.0, 4.0))),
+        MeshMaterial3d(material_handle),
+        Transform::from_xyz(0.0, 0.0, 1.5)
+            .with_rotation(Quat::from_rotation_x(-std::f32::consts::PI / 5.0)),
         MainPassCube,
     ));
     // The main pass camera.
-    commands.spawn(PointLightBundle {
-        transform: Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)),
-        ..default()
-    });
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(0.0, 0.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+    commands
+        .spawn(PointLight::default())
+        .insert(Transform::from_translation(Vec3::new(0.0, 0.0, 10.0)));
+
+    commands
+        .spawn(Camera3d::default())
+        .insert(Transform::from_xyz(0.0, 0.0, 15.0).looking_at(Vec3::ZERO, Vec3::Y));
+
     commands.spawn(VelloTarget(image_handle));
 }
 
@@ -131,7 +128,7 @@ fn render_texture(
 
     let mut scene = VelloScene::default();
     // Animate the scene
-    let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
+    let sin_time = time.elapsed_secs().sin().mul_add(0.5, 0.5);
     let c = Vec3::lerp(
         Vec3::new(-1.0, 0.0, 1.0),
         Vec3::new(1.0, 0.0, 1.0),
@@ -140,7 +137,7 @@ fn render_texture(
     scene.fill(
         peniko::Fill::NonZero,
         kurbo::Affine::translate((128.0, 128.0)),
-        peniko::Color::rgb(c.x as f64, c.y as f64, c.z as f64),
+        peniko::Color::new([c.x, c.y, c.z, 1.]),
         None,
         &kurbo::RoundedRect::new(0.0, 0.0, 256.0, 256.0, (sin_time as f64) * 128.0),
     );
@@ -168,7 +165,7 @@ fn render_texture(
 /// Rotates the outer cube (main pass)
 fn cube_rotator_system(time: Res<Time>, mut query: Query<&mut Transform, With<MainPassCube>>) {
     for mut transform in &mut query {
-        transform.rotate_x(1.0 * time.delta_seconds());
-        transform.rotate_y(0.7 * time.delta_seconds());
+        transform.rotate_x(1.0 * time.delta_secs());
+        transform.rotate_y(0.7 * time.delta_secs());
     }
 }

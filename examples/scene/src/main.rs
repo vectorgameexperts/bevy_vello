@@ -11,12 +11,12 @@ fn main() {
 }
 
 fn setup_vector_graphics(mut commands: Commands) {
-    commands.spawn(Camera2dBundle::default());
+    commands.spawn(Camera2d::default());
     commands.spawn(VelloSceneBundle::default());
 }
 
 fn simple_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>, time: Res<Time>) {
-    let sin_time = time.elapsed_seconds().sin().mul_add(0.5, 0.5);
+    let sin_time = time.elapsed_secs().sin().mul_add(0.5, 0.5);
     let (mut transform, mut scene) = query_scene.single_mut();
     // Reset scene every frame
     *scene = VelloScene::default();
@@ -32,7 +32,7 @@ fn simple_animation(mut query_scene: Query<(&mut Transform, &mut VelloScene)>, t
     scene.fill(
         peniko::Fill::NonZero,
         kurbo::Affine::default(),
-        peniko::Color::rgb(c.x as f64, c.y as f64, c.z as f64),
+        peniko::Color::new([c.x, c.y, c.z, 1.]),
         None,
         &kurbo::RoundedRect::new(-50.0, -50.0, 50.0, 50.0, (sin_time as f64) * 50.0),
     );

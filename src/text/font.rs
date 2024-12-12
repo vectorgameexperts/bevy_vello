@@ -2,13 +2,10 @@ use super::{vello_text::VelloTextSection, VelloTextAnchor};
 use bevy::{prelude::*, reflect::TypePath, render::render_asset::RenderAsset};
 use std::sync::Arc;
 use vello::{
-    glyph::{
-        skrifa::{FontRef, MetadataProvider},
-        Glyph,
-    },
     kurbo::Affine,
     peniko::{self, Blob, Font},
-    Scene,
+    skrifa::{FontRef, MetadataProvider},
+    Glyph, Scene,
 };
 
 const VARIATIONS: &[(&str, f32)] = &[];
@@ -105,7 +102,7 @@ impl VelloFont {
                 pen_x += advance;
                 width = width.max(pen_x);
                 Some(Glyph {
-                    id: gid.to_u16() as u32,
+                    id: gid.to_u32(),
                     x,
                     y: pen_y,
                 })

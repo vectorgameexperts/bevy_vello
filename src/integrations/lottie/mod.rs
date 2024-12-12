@@ -1,5 +1,10 @@
 mod asset_loader;
 
+pub(crate) mod render;
+
+pub mod asset;
+pub use asset::{VelloLottie, VelloLottieHandle};
+
 mod systems;
 #[cfg(feature = "experimental-dotLottie")]
 pub(crate) use systems::spawn_playheads;

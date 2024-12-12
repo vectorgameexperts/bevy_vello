@@ -1,7 +1,10 @@
 use super::DotLottiePlayer;
 use crate::{
-    integrations::lottie::PlaybackPlayMode, PlaybackDirection, PlaybackLoopBehavior,
-    PlaybackOptions, PlayerTransition, Playhead, VectorFile, VelloAsset,
+    integrations::lottie::{
+        asset::{VelloLottie, VelloLottieHandle},
+        PlaybackPlayMode,
+    },
+    PlaybackDirection, PlaybackLoopBehavior, PlaybackOptions, PlayerTransition, Playhead,
 };
 use bevy::{prelude::*, utils::Instant};
 use std::time::Duration;
@@ -10,27 +13,27 @@ use vello_svg::usvg::strict_num::Ulps;
 /// Advance all the dotLottie playheads in the scene
 pub fn advance_dot_lottie_playheads(
     mut query: Query<(
-        &Handle<VelloAsset>,
+        &VelloLottieHandle,
         &mut Playhead,
         &mut DotLottiePlayer,
         &PlaybackOptions,
     )>,
-    mut assets: ResMut<Assets<VelloAsset>>,
+    mut assets: ResMut<Assets<VelloLottie>>,
     time: Res<Time>,
 ) {
     for (asset_handle, mut playhead, mut player, options) in query.iter_mut() {
         // Get asset
-        let Some(VelloAsset {
-            file: VectorFile::Lottie(composition),
-            ..
-        }) = assets.get_mut(asset_handle.id())
-        else {
+        let Some(asset) = assets.get_mut(asset_handle.id()) else {
             continue;
         };
 
         // Keep playhead bounded
-        let start_frame = options.segments.start.max(composition.frames.start);
-        let end_frame = options.segments.end.min(composition.frames.end).prev();
+        let start_frame = options.segments.start.max(asset.composition.frames.start);
+        let end_frame = options
+            .segments
+            .end
+            .min(asset.composition.frames.end)
+            .prev();
         playhead.frame = playhead.frame.clamp(start_frame, end_frame);
 
         // Check if we are stopped
@@ -70,9 +73,9 @@ pub fn advance_dot_lottie_playheads(
 
         // Advance playhead
         let length = end_frame - start_frame;
-        playhead.frame += (time.delta_seconds_f64()
+        playhead.frame += (time.delta_secs_f64()
             * options.speed
-            * composition.frame_rate
+            * asset.composition.frame_rate
             * (options.direction as i32 as f64)
             * playhead.playmode_dir)
             % length;
@@ -139,9 +142,9 @@ pub fn run_transitions(
         &Playhead,
         &PlaybackOptions,
         &GlobalTransform,
-        &mut Handle<VelloAsset>,
+        &mut VelloLottieHandle,
     )>,
-    mut assets: ResMut<Assets<VelloAsset>>,
+    mut assets: ResMut<Assets<VelloLottie>>,
     windows: Query<&Window>,
     query_view: Query<(&Camera, &GlobalTransform), With<Camera2d>>,
     buttons: Res<ButtonInput<MouseButton>>,
@@ -156,7 +159,7 @@ pub fn run_transitions(
 
     let pointer_pos = window
         .cursor_position()
-        .and_then(|cursor| camera.viewport_to_world(view, cursor))
+        .and_then(|cursor| camera.viewport_to_world(view, cursor).ok())
         .map(|ray| ray.origin.truncate());
 
     for (mut player, playhead, options, gtransform, current_asset_handle) in query_player.iter_mut()
@@ -205,35 +208,37 @@ pub fn run_transitions(
                 }
                 PlayerTransition::OnComplete { state } => {
                     // can be irrefutable if only feature is lottie
-                    #[allow(irrefutable_let_patterns)]
-                    if let VectorFile::Lottie(composition) = &current_asset.file {
-                        let loops_needed = match options.looping {
-                            PlaybackLoopBehavior::DoNotLoop => Some(0),
-                            PlaybackLoopBehavior::Amount(amt) => Some(amt),
-                            PlaybackLoopBehavior::Loop => Some(0),
-                        };
-                        match options.direction {
-                            PlaybackDirection::Normal => {
-                                let end_frame =
-                                    options.segments.end.min(composition.frames.end).prev();
-                                if playhead.frame == end_frame
-                                    && loops_needed
-                                        .is_some_and(|needed| playhead.loops_completed >= needed)
-                                {
-                                    player.next_state = Some(state);
-                                    break;
-                                }
+                    let loops_needed = match options.looping {
+                        PlaybackLoopBehavior::DoNotLoop => Some(0),
+                        PlaybackLoopBehavior::Amount(amt) => Some(amt),
+                        PlaybackLoopBehavior::Loop => Some(0),
+                    };
+                    match options.direction {
+                        PlaybackDirection::Normal => {
+                            let end_frame = options
+                                .segments
+                                .end
+                                .min(current_asset.composition.frames.end)
+                                .prev();
+                            if playhead.frame == end_frame
+                                && loops_needed
+                                    .is_some_and(|needed| playhead.loops_completed >= needed)
+                            {
+                                player.next_state = Some(state);
+                                break;
                             }
-                            PlaybackDirection::Reverse => {
-                                let start_frame =
-                                    options.segments.start.max(composition.frames.start);
-                                if playhead.frame == start_frame
-                                    && loops_needed
-                                        .is_some_and(|needed| playhead.loops_completed >= needed)
-                                {
-                                    player.next_state = Some(state);
-                                    break;
-                                }
+                        }
+                        PlaybackDirection::Reverse => {
+                            let start_frame = options
+                                .segments
+                                .start
+                                .max(current_asset.composition.frames.start);
+                            if playhead.frame == start_frame
+                                && loops_needed
+                                    .is_some_and(|needed| playhead.loops_completed >= needed)
+                            {
+                                player.next_state = Some(state);
+                                break;
                             }
                         }
                     }
@@ -274,7 +279,7 @@ pub fn run_transitions(
 pub fn transition_state(
     mut commands: Commands,
     mut query_sm: Query<(Entity, &mut DotLottiePlayer, &mut Playhead)>,
-    assets: Res<Assets<VelloAsset>>,
+    assets: Res<Assets<VelloLottie>>,
 ) {
     for (entity, mut player, mut playhead) in query_sm.iter_mut() {
         // Is there a state to transition to?
@@ -309,23 +314,20 @@ pub fn transition_state(
         if reset_playhead {
             let target_asset = target_state.asset.as_ref();
             if let Some(target_asset) = target_asset {
-                let Some(VelloAsset {
-                    file: VectorFile::Lottie(composition),
-                    ..
-                }) = assets.get(target_asset)
-                else {
+                let Some(asset) = assets.get(target_asset.id()) else {
                     warn!("not ready for state transition, re-queueing {next_state}...");
                     player.next_state = Some(next_state);
                     continue;
                 };
                 let frame = match target_options.direction {
-                    PlaybackDirection::Normal => {
-                        target_options.segments.start.max(composition.frames.start)
-                    }
+                    PlaybackDirection::Normal => target_options
+                        .segments
+                        .start
+                        .max(asset.composition.frames.start),
                     PlaybackDirection::Reverse => target_options
                         .segments
                         .end
-                        .min(composition.frames.end)
+                        .min(asset.composition.frames.end)
                         .prev(),
                 };
                 playhead.seek(frame);

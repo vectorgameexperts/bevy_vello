@@ -6,145 +6,11 @@ use bevy::{
 };
 
 #[derive(Component, Clone)]
-pub struct ExtractedRenderAsset {
-    pub asset: VelloAsset,
-    pub asset_anchor: VelloAssetAnchor,
-    pub transform: GlobalTransform,
-    pub render_mode: CoordinateSpace,
-    pub ui_node: Option<Node>,
-    pub render_layers: Option<RenderLayers>,
-    pub alpha: f32,
-    #[cfg(feature = "lottie")]
-    pub theme: Option<crate::Theme>,
-    #[cfg(feature = "lottie")]
-    pub playhead: f64,
-}
-
-#[cfg(feature = "svg")]
-pub fn extract_svg_assets(
-    mut commands: Commands,
-    query_vectors: Extract<
-        Query<
-            (
-                &Handle<VelloAsset>,
-                &VelloAssetAnchor,
-                &CoordinateSpace,
-                &GlobalTransform,
-                Option<&Node>,
-                Option<&RenderLayers>,
-                &ViewVisibility,
-                &InheritedVisibility,
-            ),
-            Without<SkipEncoding>,
-        >,
-    >,
-    assets: Extract<Res<Assets<VelloAsset>>>,
-) {
-    for (
-        asset,
-        asset_anchor,
-        coord_space,
-        transform,
-        ui_node,
-        render_layers,
-        view_visibility,
-        inherited_visibility,
-    ) in query_vectors.iter()
-    {
-        if let Some(
-            asset @ VelloAsset {
-                file: _file @ crate::VectorFile::Svg(_),
-                alpha,
-                ..
-            },
-        ) = assets.get(asset)
-        {
-            if view_visibility.get() && inherited_visibility.get() {
-                commands.spawn(ExtractedRenderAsset {
-                    asset: asset.to_owned(),
-                    transform: *transform,
-                    asset_anchor: *asset_anchor,
-                    render_mode: *coord_space,
-                    ui_node: ui_node.cloned(),
-                    render_layers: render_layers.cloned(),
-                    alpha: *alpha,
-                    #[cfg(feature = "lottie")]
-                    theme: None,
-                    #[cfg(feature = "lottie")]
-                    playhead: 0.0,
-                });
-            }
-        }
-    }
-}
-
-#[cfg(feature = "lottie")]
-pub fn extract_lottie_assets(
-    mut commands: Commands,
-    query_vectors: Extract<
-        Query<
-            (
-                &Handle<VelloAsset>,
-                &VelloAssetAnchor,
-                &CoordinateSpace,
-                &GlobalTransform,
-                &crate::Playhead,
-                Option<&crate::Theme>,
-                Option<&Node>,
-                Option<&RenderLayers>,
-                &ViewVisibility,
-                &InheritedVisibility,
-            ),
-            Without<SkipEncoding>,
-        >,
-    >,
-    assets: Extract<Res<Assets<VelloAsset>>>,
-) {
-    for (
-        asset,
-        asset_anchor,
-        coord_space,
-        transform,
-        playhead,
-        theme,
-        ui_node,
-        render_layers,
-        view_visibility,
-        inherited_visibility,
-    ) in query_vectors.iter()
-    {
-        if let Some(
-            asset @ VelloAsset {
-                file: _file @ crate::VectorFile::Lottie(_),
-                alpha,
-                ..
-            },
-        ) = assets.get(asset)
-        {
-            if view_visibility.get() && inherited_visibility.get() {
-                let playhead = playhead.frame();
-                commands.spawn(ExtractedRenderAsset {
-                    asset: asset.to_owned(),
-                    transform: *transform,
-                    asset_anchor: *asset_anchor,
-                    theme: theme.cloned(),
-                    render_mode: *coord_space,
-                    playhead,
-                    alpha: *alpha,
-                    ui_node: ui_node.cloned(),
-                    render_layers: render_layers.cloned(),
-                });
-            }
-        }
-    }
-}
-
-#[derive(Component, Clone)]
 pub struct ExtractedRenderScene {
     pub scene: VelloScene,
     pub transform: GlobalTransform,
     pub render_mode: CoordinateSpace,
-    pub ui_node: Option<Node>,
+    pub ui_node: Option<ComputedNode>,
     pub render_layers: Option<RenderLayers>,
 }
 
@@ -158,7 +24,7 @@ pub fn extract_scenes(
                 &GlobalTransform,
                 &ViewVisibility,
                 &InheritedVisibility,
-                Option<&Node>,
+                Option<&ComputedNode>,
                 Option<&RenderLayers>,
             ),
             Without<SkipEncoding>,

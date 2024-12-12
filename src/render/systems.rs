@@ -1,11 +1,11 @@
 use super::{
-    extract::{ExtractedRenderAsset, ExtractedRenderText, SSRenderTarget},
+    extract::{ExtractedRenderText, SSRenderTarget},
     prepare::PreparedAffine,
-    VelloCanvasMaterial, VelloCanvasSettings, VelloRenderSettings, VelloRenderer,
+    VelloCanvasMaterial, VelloCanvasMaterialHandle, VelloCanvasSettings, VelloRenderSettings,
+    VelloRenderer,
 };
 use crate::{
-    render::extract::ExtractedRenderScene, CoordinateSpace, VelloAsset, VelloFont, VelloScene,
-    VelloTextSection,
+    render::extract::ExtractedRenderScene, CoordinateSpace, VelloFont, VelloScene, VelloTextSection,
 };
 use bevy::{
     prelude::*,
@@ -21,10 +21,15 @@ use bevy::{
         texture::GpuImage,
         view::{NoFrustumCulling, RenderLayers},
     },
-    sprite::{MaterialMesh2dBundle, Mesh2dHandle},
+    sprite::MeshMaterial2d,
     window::{WindowResized, WindowResolution},
 };
 use vello::{kurbo::Affine, RenderParams, Scene};
+
+#[cfg(feature = "lottie")]
+use crate::integrations::lottie::{render::ExtractedLottieAsset, VelloLottieHandle};
+#[cfg(feature = "svg")]
+use crate::integrations::svg::{render::ExtractedSvgAsset, VelloSvgHandle};
 
 pub fn setup_image(images: &mut Assets<Image>, window: &WindowResolution) -> Handle<Image> {
     let size = Extent3d {
@@ -61,7 +66,8 @@ pub fn setup_image(images: &mut Assets<Image>, window: &WindowResolution) -> Han
 pub fn render_frame(
     ss_render_target: Query<&SSRenderTarget>,
     views: Query<(&ExtractedCamera, Option<&RenderLayers>), With<Camera2d>>,
-    view_assets: Query<(&PreparedAffine, &ExtractedRenderAsset)>,
+    #[cfg(feature = "svg")] view_svgs: Query<(&PreparedAffine, &ExtractedSvgAsset)>,
+    #[cfg(feature = "lottie")] view_lotties: Query<(&PreparedAffine, &ExtractedLottieAsset)>,
     view_scenes: Query<(&PreparedAffine, &ExtractedRenderScene)>,
     view_text: Query<(&PreparedAffine, &ExtractedRenderText)>,
     mut font_render_assets: ResMut<RenderAssets<VelloFont>>,
@@ -80,20 +86,30 @@ pub fn render_frame(
     let gpu_image = gpu_images.get(render_target_image).unwrap();
 
     enum RenderItem<'a> {
-        Asset(&'a ExtractedRenderAsset),
+        #[cfg(feature = "svg")]
+        Svg(&'a ExtractedSvgAsset),
+        #[cfg(feature = "lottie")]
+        Lottie(&'a ExtractedLottieAsset),
         Scene(&'a ExtractedRenderScene),
         Text(&'a ExtractedRenderText),
     }
-    let mut render_queue: Vec<(f32, CoordinateSpace, (Affine, RenderItem))> = view_assets
-        .iter()
-        .map(|(&affine, asset)| {
-            (
-                asset.transform.translation().z,
-                asset.render_mode,
-                (*affine, RenderItem::Asset(asset)),
-            )
-        })
-        .collect();
+    let mut render_queue: Vec<(f32, CoordinateSpace, (Affine, RenderItem))> = vec![];
+    #[cfg(feature = "svg")]
+    render_queue.extend(view_svgs.into_iter().map(|(&affine, asset)| {
+        (
+            asset.transform.translation().z,
+            asset.render_mode,
+            (*affine, RenderItem::Svg(asset)),
+        )
+    }));
+    #[cfg(feature = "lottie")]
+    render_queue.extend(view_lotties.into_iter().map(|(&affine, asset)| {
+        (
+            asset.transform.translation().z,
+            asset.render_mode,
+            (*affine, RenderItem::Lottie(asset)),
+        )
+    }));
     render_queue.extend(view_scenes.iter().map(|(&affine, scene)| {
         (
             scene.transform.translation().z,
@@ -130,86 +146,79 @@ pub fn render_frame(
         let view_camera_layers = maybe_camera_layers.unwrap_or_default();
         // Apply transforms to the respective fragments and add them to the
         // scene to be rendered
-        for (_, _, (affine, render_item)) in
-            render_queue
-                .iter()
-                .filter(|(_, _, (_, asset))| match asset {
-                    RenderItem::Scene(ExtractedRenderScene { render_layers, .. })
-                    | &RenderItem::Text(ExtractedRenderText { render_layers, .. })
-                    | RenderItem::Asset(ExtractedRenderAsset { render_layers, .. }) => {
-                        render_layers
-                            .as_ref()
-                            .unwrap_or_default()
-                            .intersects(view_camera_layers)
-                    }
-                })
-        {
-            #[allow(unused_variables)]
+        for (_, _, (affine, render_item)) in render_queue.iter().filter(|(_, _, (_, asset))| {
+            // Ensure asset render layer inters with camera
+            match asset {
+                RenderItem::Scene(ExtractedRenderScene { render_layers, .. })
+                | RenderItem::Text(ExtractedRenderText { render_layers, .. }) => render_layers,
+                #[cfg(feature = "svg")]
+                RenderItem::Svg(ExtractedSvgAsset { render_layers, .. }) => render_layers,
+                #[cfg(feature = "lottie")]
+                RenderItem::Lottie(ExtractedLottieAsset { render_layers, .. }) => render_layers,
+            }
+            .as_ref()
+            .unwrap_or_default()
+            .intersects(view_camera_layers)
+        }) {
             match render_item {
-                RenderItem::Asset(ExtractedRenderAsset {
+                #[cfg(feature = "lottie")]
+                RenderItem::Lottie(ExtractedLottieAsset {
                     asset,
                     alpha,
-                    #[cfg(feature = "lottie")]
                     theme,
-                    #[cfg(feature = "lottie")]
                     playhead,
                     ..
-                }) => match &asset.file {
-                    #[cfg(feature = "svg")]
-                    crate::VectorFile::Svg(scene) => {
-                        if *alpha < 1.0 {
-                            scene_buffer.push_layer(
-                                vello::peniko::Mix::Normal,
-                                *alpha,
-                                *affine,
-                                &vello::kurbo::Rect::new(
-                                    0.0,
-                                    0.0,
-                                    asset.width as f64,
-                                    asset.height as f64,
-                                ),
-                            );
-                        }
-                        scene_buffer.append(scene, Some(*affine));
-                        if *alpha < 1.0 {
-                            scene_buffer.pop_layer();
-                        }
-                    }
-                    #[cfg(feature = "lottie")]
-                    crate::VectorFile::Lottie(composition) => {
-                        if *alpha < 1.0 {
-                            scene_buffer.push_layer(
-                                vello::peniko::Mix::Normal,
-                                *alpha,
-                                *affine,
-                                &vello::kurbo::Rect::new(
-                                    0.0,
-                                    0.0,
-                                    asset.width as f64,
-                                    asset.height as f64,
-                                ),
-                            );
-                        }
-                        velato_renderer.append(
-                            {
-                                theme
-                                    .as_ref()
-                                    .map(|cs| cs.recolor(composition))
-                                    .as_ref()
-                                    .unwrap_or(composition)
-                            },
-                            *playhead as f64,
+                }) => {
+                    if *alpha < 1.0 {
+                        scene_buffer.push_layer(
+                            vello::peniko::Mix::Normal,
+                            *alpha,
                             *affine,
-                            1.0,
-                            &mut scene_buffer,
+                            &vello::kurbo::Rect::new(
+                                0.0,
+                                0.0,
+                                asset.width as f64,
+                                asset.height as f64,
+                            ),
                         );
-                        if *alpha < 1.0 {
-                            scene_buffer.pop_layer();
-                        }
                     }
-                    #[cfg(not(any(feature = "svg", feature = "lottie")))]
-                    _ => unimplemented!(),
-                },
+                    velato_renderer.append(
+                        {
+                            theme
+                                .as_ref()
+                                .map(|cs| cs.recolor(&asset.composition))
+                                .as_ref()
+                                .unwrap_or(&asset.composition)
+                        },
+                        *playhead as f64,
+                        *affine,
+                        1.0,
+                        &mut scene_buffer,
+                    );
+                    if *alpha < 1.0 {
+                        scene_buffer.pop_layer();
+                    }
+                }
+                #[cfg(feature = "svg")]
+                RenderItem::Svg(ExtractedSvgAsset { asset, alpha, .. }) => {
+                    if *alpha < 1.0 {
+                        scene_buffer.push_layer(
+                            vello::peniko::Mix::Normal,
+                            *alpha,
+                            *affine,
+                            &vello::kurbo::Rect::new(
+                                0.0,
+                                0.0,
+                                asset.width as f64,
+                                asset.height as f64,
+                            ),
+                        );
+                    }
+                    scene_buffer.append(&asset.scene, Some(*affine));
+                    if *alpha < 1.0 {
+                        scene_buffer.pop_layer();
+                    }
+                }
                 RenderItem::Scene(ExtractedRenderScene { scene, .. }) => {
                     scene_buffer.append(scene, Some(*affine));
                 }
@@ -244,7 +253,7 @@ pub fn render_frame(
 
 pub fn resize_rendertargets(
     mut window_resize_events: EventReader<WindowResized>,
-    mut query: Query<(&mut SSRenderTarget, &Handle<VelloCanvasMaterial>)>,
+    mut query: Query<(&mut SSRenderTarget, &VelloCanvasMaterialHandle)>,
     mut images: ResMut<Assets<Image>>,
     mut target_materials: ResMut<Assets<VelloCanvasMaterial>>,
     windows: Query<&Window>,
@@ -263,7 +272,7 @@ pub fn resize_rendertargets(
         }
         for (mut target, target_mat_handle) in query.iter_mut() {
             let image = setup_image(&mut images, &window.resolution);
-            if let Some(mat) = target_materials.get_mut(target_mat_handle) {
+            if let Some(mat) = target_materials.get_mut(target_mat_handle.id()) {
                 target.0 = image.clone();
                 mat.texture = image;
             }
@@ -314,20 +323,16 @@ pub fn setup_ss_rendertarget(
         meshes.add(rendertarget_quad)
     });
     let texture_image = setup_image(&mut images, &window.resolution);
-    let render_target = SSRenderTarget(texture_image.clone());
-    let mesh = Mesh2dHandle(mesh_handle.clone());
-    let material = custom_materials.add(VelloCanvasMaterial {
-        texture: texture_image,
-    });
 
     commands
-        .spawn(MaterialMesh2dBundle {
-            mesh,
-            material,
-            ..default()
-        })
+        .spawn((
+            SSRenderTarget(texture_image.clone()),
+            Mesh2d(mesh_handle.clone()),
+            MeshMaterial2d(custom_materials.add(VelloCanvasMaterial {
+                texture: texture_image,
+            })),
+        ))
         .insert(NoFrustumCulling)
-        .insert(render_target)
         .insert(settings.render_layers.clone());
 }
 
@@ -347,11 +352,38 @@ pub fn render_settings_change_detection(
 /// Hide the render target canvas if there is nothing to render
 pub fn hide_when_empty(
     mut query_render_target: Query<&mut Visibility, With<SSRenderTarget>>,
+    // TODO: Fix this monstrocity by having a resource that counts the amount of render items.
+    // ----- It would be useful for debugging purposes, too.
+    #[cfg(all(feature = "svg", feature = "lottie"))] render_items: Query<
+        (),
+        Or<(
+            With<VelloScene>,
+            With<VelloSvgHandle>,
+            With<VelloLottieHandle>,
+            With<VelloTextSection>,
+        )>,
+    >,
+    #[cfg(all(not(feature = "lottie"), not(feature = "svg")))] render_items: Query<
+        (),
+        Or<(With<VelloScene>, With<VelloTextSection>)>,
+    >,
+    #[cfg(feature = "svg")]
+    #[cfg(not(feature = "lottie"))]
     render_items: Query<
         (),
         Or<(
             With<VelloScene>,
-            With<Handle<VelloAsset>>,
+            With<VelloSvgHandle>,
+            With<VelloTextSection>,
+        )>,
+    >,
+    #[cfg(feature = "lottie")]
+    #[cfg(not(feature = "svg"))]
+    render_items: Query<
+        (),
+        Or<(
+            With<VelloScene>,
+            With<VelloLottieHandle>,
             With<VelloTextSection>,
         )>,
     >,

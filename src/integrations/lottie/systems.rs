@@ -1,35 +1,33 @@
 use crate::{
     integrations::lottie::PlaybackPlayMode, PlaybackDirection, PlaybackLoopBehavior,
-    PlaybackOptions, Playhead, VectorFile, VelloAsset,
+    PlaybackOptions, Playhead,
 };
 use bevy::{prelude::*, utils::Instant};
 use std::time::Duration;
 use vello_svg::usvg::strict_num::Ulps;
 
+use super::asset::{VelloLottie, VelloLottieHandle};
+
 /// Spawn playheads for Lotties. Every Lottie gets exactly 1 playhead.
 pub fn spawn_playheads(
     mut commands: Commands,
-    query: Query<(Entity, &Handle<VelloAsset>, Option<&PlaybackOptions>), Without<Playhead>>,
-    assets: Res<Assets<VelloAsset>>,
+    query: Query<(Entity, &VelloLottieHandle, Option<&PlaybackOptions>), Without<Playhead>>,
+    assets: Res<Assets<VelloLottie>>,
 ) {
     for (entity, handle, options) in query.iter() {
-        if let Some(
-            _asset @ VelloAsset {
-                file: _file @ VectorFile::Lottie(composition),
-                ..
-            },
-        ) = assets.get(handle)
-        {
+        if let Some(asset) = assets.get(handle.id()) {
             let frame = match options {
                 Some(options) => match options.direction {
                     PlaybackDirection::Normal => {
-                        options.segments.start.max(composition.frames.start)
+                        options.segments.start.max(asset.composition.frames.start)
                     }
-                    PlaybackDirection::Reverse => {
-                        options.segments.end.min(composition.frames.end).prev()
-                    }
+                    PlaybackDirection::Reverse => options
+                        .segments
+                        .end
+                        .min(asset.composition.frames.end)
+                        .prev(),
                 },
-                None => composition.frames.start,
+                None => asset.composition.frames.start,
             };
             commands.entity(entity).insert(Playhead::new(frame));
         }
@@ -39,29 +37,25 @@ pub fn spawn_playheads(
 /// Advance all lottie playheads without playback options in the scene
 pub fn advance_playheads_without_options(
     #[cfg(feature = "experimental-dotLottie")] mut query: Query<
-        (&Handle<VelloAsset>, &mut Playhead),
+        (&VelloLottieHandle, &mut Playhead),
         (Without<PlaybackOptions>, Without<crate::DotLottiePlayer>),
     >,
     #[cfg(not(feature = "experimental-dotLottie"))] mut query: Query<
-        (&Handle<VelloAsset>, &mut Playhead),
+        (&VelloLottieHandle, &mut Playhead),
         Without<PlaybackOptions>,
     >,
-    mut assets: ResMut<Assets<VelloAsset>>,
+    mut assets: ResMut<Assets<VelloLottie>>,
     time: Res<Time>,
 ) {
     for (asset_handle, mut playhead) in query.iter_mut() {
         // Get asset
-        let Some(VelloAsset {
-            file: VectorFile::Lottie(composition),
-            ..
-        }) = assets.get_mut(asset_handle.id())
-        else {
+        let Some(asset) = assets.get_mut(asset_handle.id()) else {
             continue;
         };
 
         // Keep playhead bounded
-        let start_frame = composition.frames.start;
-        let end_frame = composition.frames.end.prev();
+        let start_frame = asset.composition.frames.start;
+        let end_frame = asset.composition.frames.end.prev();
         playhead.frame = playhead.frame.clamp(start_frame, end_frame);
 
         // Set first render
@@ -69,7 +63,7 @@ pub fn advance_playheads_without_options(
 
         // Advance playhead
         let length = end_frame - start_frame;
-        playhead.frame += (time.delta_seconds_f64() * composition.frame_rate) % length;
+        playhead.frame += (time.delta_secs_f64() * asset.composition.frame_rate) % length;
 
         if playhead.frame > end_frame {
             // Wrap around to the beginning of the segment
@@ -81,30 +75,30 @@ pub fn advance_playheads_without_options(
 /// Advance all lottie playheads with playback options in the scene
 pub fn advance_playheads_with_options(
     #[cfg(feature = "experimental-dotLottie")] mut query: Query<
-        (&Handle<VelloAsset>, &mut Playhead, &PlaybackOptions),
+        (&VelloLottieHandle, &mut Playhead, &PlaybackOptions),
         Without<crate::DotLottiePlayer>,
     >,
     #[cfg(not(feature = "experimental-dotLottie"))] mut query: Query<(
-        &Handle<VelloAsset>,
+        &VelloLottieHandle,
         &mut Playhead,
         &PlaybackOptions,
     )>,
-    mut assets: ResMut<Assets<VelloAsset>>,
+    mut assets: ResMut<Assets<VelloLottie>>,
     time: Res<Time>,
 ) {
     for (asset_handle, mut playhead, options) in query.iter_mut() {
         // Get asset
-        let Some(VelloAsset {
-            file: VectorFile::Lottie(composition),
-            ..
-        }) = assets.get_mut(asset_handle.id())
-        else {
+        let Some(asset) = assets.get_mut(asset_handle.id()) else {
             continue;
         };
 
         // Keep playhead bounded
-        let start_frame = options.segments.start.max(composition.frames.start);
-        let end_frame = options.segments.end.min(composition.frames.end).prev();
+        let start_frame = options.segments.start.max(asset.composition.frames.start);
+        let end_frame = options
+            .segments
+            .end
+            .min(asset.composition.frames.end)
+            .prev();
         playhead.frame = playhead.frame.clamp(start_frame, end_frame);
 
         // Set first render
@@ -134,9 +128,9 @@ pub fn advance_playheads_with_options(
 
         // Advance playhead
         let length = end_frame - start_frame;
-        playhead.frame += (time.delta_seconds_f64()
+        playhead.frame += (time.delta_secs_f64()
             * options.speed
-            * composition.frame_rate
+            * asset.composition.frame_rate
             * (options.direction as i32 as f64)
             * playhead.playmode_dir)
             % length;

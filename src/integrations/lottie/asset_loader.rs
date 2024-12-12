@@ -1,9 +1,7 @@
-use crate::{
-    integrations::{lottie::load_lottie_from_bytes, VectorLoaderError},
-    VelloAsset,
-};
+use super::asset::VelloLottie;
+use crate::integrations::{lottie::load_lottie_from_bytes, VectorLoaderError};
 use bevy::{
-    asset::{io::Reader, AssetLoader, AsyncReadExt, LoadContext},
+    asset::{io::Reader, AssetLoader, LoadContext},
     prelude::*,
     utils::ConditionalSendFuture,
 };
@@ -12,17 +10,17 @@ use bevy::{
 pub struct VelloLottieLoader;
 
 impl AssetLoader for VelloLottieLoader {
-    type Asset = VelloAsset;
+    type Asset = VelloLottie;
 
     type Settings = ();
 
     type Error = VectorLoaderError;
 
-    fn load<'a>(
-        &'a self,
-        reader: &'a mut Reader,
-        _settings: &'a Self::Settings,
-        load_context: &'a mut LoadContext,
+    fn load(
+        &self,
+        reader: &mut dyn Reader,
+        _settings: &Self::Settings,
+        load_context: &mut LoadContext,
     ) -> impl ConditionalSendFuture<Output = Result<Self::Asset, Self::Error>> {
         Box::pin(async move {
             let mut bytes = Vec::new();

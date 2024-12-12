@@ -20,9 +20,10 @@ license = "(MIT OR Apache-2.0) AND OFL-1.1"
 repository = "https://github.com/linebender/bevy_vello"
 
 [workspace.dependencies]
-bevy = { version = "0.14.0", default-features = false, features = [
+bevy = { version = "0.15.0", default-features = false, features = [
   "bevy_asset",
   "bevy_winit",
+  "bevy_window",
   "bevy_core_pipeline",
   "bevy_pbr",
   "bevy_render",
@@ -51,9 +52,12 @@ repository.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]
 bevy = { workspace = true }
-vello = "0.2.1"
-vello_svg = "0.3.0"
-velato = "0.3.0"
+# vello = "0.3.0"
+vello = { git = "https://github.com/linebender/vello", rev = "2e2cb1601de7faa85cb3fa87cd03bac9ea10d233" }
+# vello_svg = "0.5.0"
+vello_svg = { git = "https://github.com/linebender/vello_svg", rev = "129542b8947558879b32b12356ebeed9e9f5cba0" }
+# velato = "0.4.0"
+velato = { git = "https://github.com/linebender/velato", rev = "2d6cd9516f93d662c6ea4096bbf837b8151dfc76" }
 thiserror = "1.0.61"
 once_cell = "1.19.0"
 

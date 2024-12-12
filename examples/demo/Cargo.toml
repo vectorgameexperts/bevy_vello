@@ -10,5 +10,5 @@ publish = false
 [dependencies]
 bevy_vello = { path = "../../", features = ["experimental-dotLottie"] }
 bevy = { workspace = true }
-bevy_pancam = { version = "0.12.0", features = ["bevy_egui"] }
-bevy_egui = "0.28.0"
+bevy_pancam = { version = "0.16.0", features = ["bevy_egui"] }
+bevy_egui = "0.31.0"
